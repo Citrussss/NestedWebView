@@ -19,11 +19,11 @@ import android.webkit.WebView
  */
 class NestedWebView : WebView, NestedScrollingChild {
     private val canScrollVertically = true
-    private var mVelocityTracker: VelocityTracker? = null
+
     private var mScrollPointerId: Int = 0
 
-    private var touchX: Float = 0.toFloat()
-    private var touchY: Float = 0.toFloat()
+    private var touchX = 0F
+    private var touchY = 0F
 
     private val isScrollToBottom: Boolean
         get() = (contentHeight * scale - (height + scrollY)).toInt() == 0
@@ -33,6 +33,9 @@ class NestedWebView : WebView, NestedScrollingChild {
     //延迟属性，实现双重校验式
     private val scrollingChildHelper: NestedScrollingChildHelper by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) {
         NestedScrollingChildHelper(this)
+    }
+    private val mVelocityTracker: VelocityTracker by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED) {
+        VelocityTracker.obtain()
     }
 //        get() {
 //            return this.mScrollingChildHelper ?: synchronized(this) {
@@ -79,9 +82,6 @@ class NestedWebView : WebView, NestedScrollingChild {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                if (this.mVelocityTracker == null) {
-                    this.mVelocityTracker = VelocityTracker.obtain()
-                }
                 touchX = event.x + 0.5f
                 touchY = event.y + 0.5f
                 this.scrollingChildHelper.isNestedScrollingEnabled = true
@@ -89,7 +89,7 @@ class NestedWebView : WebView, NestedScrollingChild {
             }
             MotionEvent.ACTION_MOVE -> {
                 this.mScrollPointerId = event.getPointerId(0)
-                this.mVelocityTracker!!.addMovement(event)
+                this.mVelocityTracker.addMovement(event)
                 val x = event.x + 0.5f
                 val y = event.y + 0.5f
                 val dx = (touchX - x).toInt()
@@ -97,13 +97,11 @@ class NestedWebView : WebView, NestedScrollingChild {
                 this.scrollingChildHelper.dispatchNestedPreScroll(dx, dy, intArrayOf(0, 0), intArrayOf(0, 0))
             }
             MotionEvent.ACTION_UP -> {
-                this.mVelocityTracker!!.computeCurrentVelocity(1000)
+                this.mVelocityTracker.computeCurrentVelocity(1000)
                 val xvel = 0f
-                //                canScrollHorizontally ? -this.mVelocityTracker.getXVelocity(this.mScrollPointerId) : 0.0F;
-                val yvel =
-                    if (canScrollVertically) -this.mVelocityTracker!!.getYVelocity(this.mScrollPointerId) else 0.0f
+                val yvel = if (canScrollVertically) -this.mVelocityTracker.getYVelocity(this.mScrollPointerId) else 0.0f
                 this.fling(xvel.toInt(), yvel.toInt())
-                mVelocityTracker!!.recycle()
+                mVelocityTracker.recycle()
                 this.scrollingChildHelper.stopNestedScroll()
             }
             MotionEvent.ACTION_POINTER_UP -> this.scrollingChildHelper.stopNestedScroll()
